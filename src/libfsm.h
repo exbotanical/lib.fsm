@@ -8,7 +8,7 @@
 #define MAX_INBUF_SIZE 128
 #define MAX_TRANSITION_TABLE_SIZE 128
 #define MAX_TRANSITION_KEY_SIZE 64
-#define MAX_OUTPUT_SIZE 1024
+#define MAX_OUTBUF_SIZE 1024
 
 typedef struct state state_t;
 typedef struct fsm fsm_t;
@@ -32,7 +32,7 @@ typedef enum {
 } fsm_error_t;
 
 typedef struct fsm_outbuf {
-	char outbuf[MAX_OUTPUT_SIZE];
+	char outbuf[MAX_OUTBUF_SIZE];
 	unsigned int curr_pos;
 } fsm_outbuf_t;
 
