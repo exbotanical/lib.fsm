@@ -2,6 +2,12 @@
 
 Programmable finite state machines for the C Programming Language
 
+## General Workflow and Meta Algorithm
+
+![visualization](./docs/fsmlib.png)
+
+## Documentation and API
+
 ## Dynamic Linking
 
 Linking to `lib.fsm`:

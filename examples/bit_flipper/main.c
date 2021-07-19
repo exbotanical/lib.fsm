@@ -5,11 +5,13 @@
 #include <stdlib.h>
 
 // state transition routine
-void bitflip_routine(state_t* from, state_t* to) {
-	char* inbuf;
-	unsigned int inbuf_size;
-	fsm_outbuf_t* outbuf;
-
+void bitflip_routine(
+	state_t* from,
+	state_t* to,
+	char* inbuf,
+	unsigned int inbuf_size,
+	fsm_outbuf_t* outbuf
+) {
 	char out;
 	out = (*inbuf == '1') ? '0' : '1';
 
@@ -22,6 +24,11 @@ void bitflip_routine(state_t* from, state_t* to) {
 		out,
 		to->name
 	);
+}
+
+void init_outbuf(fsm_outbuf_t* outbuf) {
+	memset(outbuf->outbuf, 0, MAX_OUTBUF_SIZE);
+	outbuf->curr_pos = 0;
 }
 
 int main(int argc, char* argv[]) {
@@ -119,10 +126,9 @@ int main(int argc, char* argv[]) {
 	fsm_error_t error;
 	fsm_outbuf_t output;
 
-	memset(output.outbuf, 0, MAX_OUTBUF_SIZE);
-	output.curr_pos = 0;
+	init_outbuf(&output);
 
-	char* input = "0101010101\0";
+	char* input = "0101010101";
 
 	if ((error = fsm_invoke(
 		fsm,

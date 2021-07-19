@@ -17,7 +17,7 @@
   }} while(0);                                      \
 
 /* Utilities */
-tt_entry_t* get_next_avail_entry(tt_t* ttable) {
+tt_entry_t* __get_next_avail_entry(tt_t* ttable) {
 	tt_entry_t* entry = NULL;
 
 	FSM_ITERATE_TTABLE_BEGIN(ttable, entry) {
@@ -40,7 +40,7 @@ state_t* __apply_transition(
 	char* inbuf, // input to parse
 	unsigned int size, // remaining length of unparsed input
 	unsigned int* len_read, // will be set to no bytes read
-	fsm_outbuf_t* outbuf
+	fsm_outbuf_t* outbuf // output container
 	) {
 	tt_entry_t* entry = NULL;
 	state_t* next_state = NULL;
@@ -147,7 +147,7 @@ bool fsm_add_tt_entry(
 
 	tt_entry_t* entry;
 
-	if (!(entry = get_next_avail_entry(t_table))) {
+	if (!(entry = __get_next_avail_entry(t_table))) {
 		printf("FATAL: Transition Table is full\n");
 		return false;
 	}
