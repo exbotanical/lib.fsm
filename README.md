@@ -1,6 +1,6 @@
 # lib.fsm
 
-Deterministic Finite State Machines for the C Programming Language
+Programmable finite state machines for the C Programming Language
 
 ## Dynamic Linking
 
