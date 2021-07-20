@@ -6,6 +6,8 @@ Programmable finite state machines for the C Programming Language
 
 ![visualization](./docs/fsmlib.png)
 
+[Example: Bit Counter](./examples/bit_counter/main.c)
+
 ## Documentation and API
 
 ## Dynamic Linking

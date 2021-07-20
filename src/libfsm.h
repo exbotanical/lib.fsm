@@ -106,6 +106,8 @@ typedef struct fsm {
 	/* Output buffer preallocation */
 	fsm_outbuf_t outbuf;
 
+	/*<Optional */
+	/* Function, used to match transition entries; generates the transition key */
 	input_matcher input_matcher;
 } fsm_t;
 
@@ -117,7 +119,7 @@ state_t* fsm_state_init(const char* name, fsm_bool_t is_final);
 
 bool fsm_set_initial_state(fsm_t* fsm, state_t* state);
 
-bool fsm_add_entry(
+tt_entry_t* fsm_add_entry(
 	tt_t* t_table,
 	char* transition_key,
 	unsigned int sizeof_key,
@@ -131,6 +133,15 @@ fsm_error_t fsm_invoke(
 	unsigned int size,
 	fsm_outbuf_t* outbuf,
 	fsm_bool_t* fsm_result
+);
+
+void fsm_register_entry_comparator(tt_entry_t* entry, input_matcher matcher);
+
+void fsm_add_wildcard_entry(
+	state_t* from,
+	state_t* to,
+	outhandler out,
+	input_matcher matcher
 );
 
 #endif /* LIB_FSM_H */

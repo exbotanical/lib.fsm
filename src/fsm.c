@@ -58,7 +58,6 @@ fsm_bool_t __entry_comparator(
 	unsigned int inbuf_size,
 	unsigned int* n_bytes_read
 ) {
-	unsigned int i = 0;
 	fsm_bool_t has_input_matcher = FSM_FALSE;
 	fsm_bool_t ret = FSM_FALSE;
 
@@ -69,14 +68,16 @@ fsm_bool_t __entry_comparator(
 		: FSM_FALSE;
 
 	if (has_input_matcher) {
-		for (; i < MAX_ENTRY_CALLBACKS; i++) {
+		for (unsigned int i = 0; i < MAX_ENTRY_CALLBACKS; i++) {
 			if (!entry->input_matchers[i]) return FSM_FALSE;
 
 			if ((entry->input_matchers[i])(NULL, 0, inbuf, inbuf_size, n_bytes_read)) {
-					return FSM_TRUE;
+				return FSM_TRUE;
 			}
+
 			*n_bytes_read = 0;
 		}
+
 		return FSM_FALSE;
 	}
 
@@ -129,6 +130,31 @@ state_t* __apply_transition(
 }
 
 /* Public API */
+
+/**
+ * @brief Resolve state transition in any direction
+ *
+ * @param from
+ * @param to
+ * @param out
+ * @param matcher
+ */
+void fsm_add_wildcard_entry(
+	state_t* from,
+	state_t* to,
+	outhandler out,
+	input_matcher matcher
+) {
+	tt_entry_t* entry = fsm_add_entry(
+		&from->transition_table,
+		0,
+		0,
+		to,
+		out
+	);
+
+	fsm_register_entry_comparator(entry, matcher);
+}
 
 /**
  * @brief Register an entry comparator function
@@ -210,7 +236,7 @@ bool fsm_set_initial_state(fsm_t* fsm, state_t* state) {
  * @return true
  * @return false
  */
-bool fsm_add_entry(
+tt_entry_t* fsm_add_entry(
 	tt_t* t_table,
 	char* transition_key,
 	unsigned int sizeof_key,
@@ -223,7 +249,7 @@ bool fsm_add_entry(
 
 	if (!(entry = __get_next_avail_entry(t_table))) {
 		printf("FATAL: Transition Table is full\n");
-		return false;
+		return NULL;
 	}
 
 	// TODO replace w/ snprintf or strlcpy
@@ -233,7 +259,7 @@ bool fsm_add_entry(
 	entry->next_state = next_state;
 	entry->out_handler = output_handler;
 
-	return true;
+	return entry;
 }
 
 fsm_error_t fsm_invoke(
