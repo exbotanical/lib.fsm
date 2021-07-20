@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
 	// state transitions
 
 	// q0
-	fsm_add_tt_entry(
+	fsm_add_entry(
 		&state_0->transition_table,
 		&transition_key_1,
 		transition_keysize,
@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
 		bitflip_routine
 	);
 
-	fsm_add_tt_entry(
+	fsm_add_entry(
 		&state_0->transition_table,
 		&transition_key_0,
 		transition_keysize,
@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
 	);
 
 	// q1
-	fsm_add_tt_entry(
+	fsm_add_entry(
 		&state_1->transition_table,
 		&transition_key_1,
 		transition_keysize,
@@ -80,7 +80,7 @@ int main(int argc, char* argv[]) {
 		bitflip_routine
 	);
 
-	fsm_add_tt_entry(
+	fsm_add_entry(
 		&state_1->transition_table,
 		&transition_key_0,
 		transition_keysize,
@@ -89,7 +89,7 @@ int main(int argc, char* argv[]) {
 	);
 
 	// q2
-	fsm_add_tt_entry(
+	fsm_add_entry(
 		&state_2->transition_table,
 		&transition_key_1,
 		transition_keysize,
@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
 		bitflip_routine
 	);
 
-	fsm_add_tt_entry(
+	fsm_add_entry(
 		&state_2->transition_table,
 		&transition_key_0,
 		transition_keysize,
@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
 	);
 
 	// dead state
-	fsm_add_tt_entry(
+	fsm_add_entry(
 		&D->transition_table,
 		&transition_key_1,
 		transition_keysize,
@@ -114,7 +114,7 @@ int main(int argc, char* argv[]) {
 		bitflip_routine
 	);
 
-	fsm_add_tt_entry(
+	fsm_add_entry(
 		&D->transition_table,
 		&transition_key_0,
 		transition_keysize,
@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
 
 	init_outbuf(&output);
 
-	char* input = "0101010101";
+	char* input = "0101010101\0";
 
 	if ((error = fsm_invoke(
 		fsm,
@@ -142,7 +142,7 @@ int main(int argc, char* argv[]) {
 		} else {
 			printf("NO OUTPUT\n");
 		}
-	}
+	}	else if (error == FSM_E_FAILED_TRANSITION) printf("error: failed transition\n");
 
 	return EXIT_SUCCESS;
 }

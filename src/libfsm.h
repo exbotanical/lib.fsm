@@ -9,6 +9,7 @@
 #define MAX_TRANSITION_TABLE_SIZE 128
 #define MAX_TRANSITION_KEY_SIZE 64
 #define MAX_OUTBUF_SIZE 1024
+#define MAX_ENTRY_CALLBACKS 5
 
 typedef struct state state_t;
 typedef struct fsm fsm_t;
@@ -36,6 +37,7 @@ typedef struct fsm_outbuf {
 	unsigned int curr_pos;
 } fsm_outbuf_t;
 
+// callback <T>
 typedef void(*outhandler)(
 	state_t*,
 	state_t*,
@@ -44,11 +46,21 @@ typedef void(*outhandler)(
 	fsm_outbuf_t*
 );
 
+// callback <T>
+typedef fsm_bool_t (*input_matcher)(
+  char* data,
+  unsigned int size,
+  char* data_n,
+  unsigned int data_size,
+  unsigned int* n_bytes_read
+);
+
 typedef struct tt_entry {
 	char transition_key[MAX_TRANSITION_KEY_SIZE];
 	unsigned int transition_key_size;
 	state_t* next_state;
 	outhandler out_handler;
+	input_matcher input_matchers[MAX_ENTRY_CALLBACKS];
 } tt_entry_t;
 
 /**
@@ -90,6 +102,11 @@ typedef struct fsm {
 
 	/* N bytes of input_buffer that has been processed */
 	unsigned int inbuf_cursor;
+
+	/* Output buffer preallocation */
+	fsm_outbuf_t outbuf;
+
+	input_matcher input_matcher;
 } fsm_t;
 
 /* FSM API */
@@ -100,7 +117,7 @@ state_t* fsm_state_init(const char* name, fsm_bool_t is_final);
 
 bool fsm_set_initial_state(fsm_t* fsm, state_t* state);
 
-bool fsm_add_tt_entry(
+bool fsm_add_entry(
 	tt_t* t_table,
 	char* transition_key,
 	unsigned int sizeof_key,
