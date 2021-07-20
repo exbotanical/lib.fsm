@@ -7,6 +7,7 @@ Programmable finite state machines for the C Programming Language
 ![visualization](./docs/fsmlib.png)
 
 [Example: Bit Counter](./examples/bit_counter/main.c)
+[Example: Email Address Validator](./examples/email_validator/main.c)
 
 ## Documentation and API
 
