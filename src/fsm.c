@@ -1,132 +1,115 @@
+#include <stdio.h>  /* for snprintf */
+#include <stdlib.h> /* for malloc */
+#include <string.h> /* for strlen */
+
 #include "libfsm.h"
 
-#include <stdio.h> /* for snprintf */
-#include <string.h> /* for strlen */
-#include <stdlib.h> /* for malloc */
-
 // local (non-public API) macros
-#define FSM_ITERATE_TABLE_BEGIN(ttable, e)                        \
-  do {                                                             \
-    for (int idx = 0; idx < MAX_TRANSITION_TABLE_SIZE; idx++) {    \
-      e = &(ttable->entry[idx]);                                   \
-      if (!e->next_state) break;                                   \
+#define FSM_ITERATE_TABLE_BEGIN(ttable, e)                      \
+  do {                                                          \
+    for (int idx = 0; idx < MAX_TRANSITION_TABLE_SIZE; idx++) { \
+      e = &(ttable->entry[idx]);                                \
+      if (!e->next_state) break;
 
-
-#define FSM_ITERATE_TABLE_END(ttable, e)                          \
-  }} while(0);                                                     \
+#define FSM_ITERATE_TABLE_END(ttable, e) \
+  }                                      \
+  }                                      \
+  while (0)                              \
+    ;
 
 /* Utilities */
 
 void __register_input_comparator(fsm_t* fsm, input_matcher comparator) {
-	fsm->input_matcher = comparator;
+  fsm->input_matcher = comparator;
 }
 
 tt_entry_t* __get_next_avail_entry(tt_t* ttable) {
-	tt_entry_t* entry = NULL;
+  tt_entry_t* entry = NULL;
 
-	FSM_ITERATE_TABLE_BEGIN(ttable, entry) {
-		// no-op
-	} FSM_ITERATE_TABLE_END(ttable, entry);
+  FSM_ITERATE_TABLE_BEGIN(ttable, entry) {
+    // no-op
+  }
+  FSM_ITERATE_TABLE_END(ttable, entry);
 
-	if (!entry->next_state) {
-		return entry;
-	}
+  if (!entry->next_state) {
+    return entry;
+  }
 
-	return NULL;
+  return NULL;
 }
 
-fsm_bool_t __input_comparator(
-	char* transition_key,
-	unsigned int size,
-	char* data,
-	unsigned int data_size,
-	unsigned int* n_bytes_read
-	) {
-	if (size <= data_size) {
-		if (memcmp(transition_key, data, size)) return FSM_FALSE;
-		*n_bytes_read = size;
-		return FSM_TRUE;
-	}
-	*n_bytes_read = 0;
-	return FSM_TRUE;
+fsm_bool_t __input_comparator(char* transition_key, unsigned int size,
+                              char* data, unsigned int data_size,
+                              unsigned int* n_bytes_read) {
+  if (size <= data_size) {
+    if (memcmp(transition_key, data, size)) return FSM_FALSE;
+    *n_bytes_read = size;
+    return FSM_TRUE;
+  }
+  *n_bytes_read = 0;
+  return FSM_TRUE;
 }
 
-fsm_bool_t __entry_comparator(
-	fsm_t* fsm,
-	tt_entry_t* entry,
-	char* inbuf,
-	unsigned int inbuf_size,
-	unsigned int* n_bytes_read
-) {
-	fsm_bool_t has_input_matcher = FSM_FALSE;
-	fsm_bool_t ret = FSM_FALSE;
+fsm_bool_t __entry_comparator(fsm_t* fsm, tt_entry_t* entry, char* inbuf,
+                              unsigned int inbuf_size,
+                              unsigned int* n_bytes_read) {
+  fsm_bool_t has_input_matcher = FSM_FALSE;
+  fsm_bool_t ret = FSM_FALSE;
 
-	if (!inbuf) return FSM_TRUE;
+  if (!inbuf) return FSM_TRUE;
 
-	has_input_matcher = entry->input_matchers[0]
-		? FSM_TRUE
-		: FSM_FALSE;
+  has_input_matcher = entry->input_matchers[0] ? FSM_TRUE : FSM_FALSE;
 
-	if (has_input_matcher) {
-		for (unsigned int i = 0; i < MAX_ENTRY_CALLBACKS; i++) {
-			if (!entry->input_matchers[i]) return FSM_FALSE;
+  if (has_input_matcher) {
+    for (unsigned int i = 0; i < MAX_ENTRY_CALLBACKS; i++) {
+      if (!entry->input_matchers[i]) return FSM_FALSE;
 
-			if ((entry->input_matchers[i])(NULL, 0, inbuf, inbuf_size, n_bytes_read)) {
-				return FSM_TRUE;
-			}
+      if ((entry->input_matchers[i])(NULL, 0, inbuf, inbuf_size,
+                                     n_bytes_read)) {
+        return FSM_TRUE;
+      }
 
-			*n_bytes_read = 0;
-		}
+      *n_bytes_read = 0;
+    }
 
-		return FSM_FALSE;
-	}
+    return FSM_FALSE;
+  }
 
-	if ((ret = fsm->input_matcher(
-		entry->transition_key,
-		entry->transition_key_size,
-		inbuf,
-		inbuf_size,
-		n_bytes_read
-	)) == FSM_TRUE) {
-		*n_bytes_read = entry->transition_key_size;
-	}
+  if ((ret =
+           fsm->input_matcher(entry->transition_key, entry->transition_key_size,
+                              inbuf, inbuf_size, n_bytes_read)) == FSM_TRUE) {
+    *n_bytes_read = entry->transition_key_size;
+  }
 
-	return ret;
+  return ret;
 }
 
 state_t* __apply_transition(
-	fsm_t* fsm,
-	state_t* state,
-	char* inbuf, // input to parse
-	unsigned int size, // remaining length of unparsed input
-	unsigned int* n_bytes_read, // will be set to no bytes read
-	fsm_outbuf_t* outbuf // output container
-	) {
-	tt_entry_t* entry = NULL;
-	state_t* next_state = NULL;
+    fsm_t* fsm, state_t* state,
+    char* inbuf,                 // input to parse
+    unsigned int size,           // remaining length of unparsed input
+    unsigned int* n_bytes_read,  // will be set to no bytes read
+    fsm_outbuf_t* outbuf         // output container
+) {
+  tt_entry_t* entry = NULL;
+  state_t* next_state = NULL;
 
-	FSM_ITERATE_TABLE_BEGIN((&state->transition_table), entry) {
-		if ((entry->transition_key_size <= size) &&
-			__entry_comparator(fsm, entry, inbuf, size, n_bytes_read)) {
+  FSM_ITERATE_TABLE_BEGIN((&state->transition_table), entry) {
+    if ((entry->transition_key_size <= size) &&
+        __entry_comparator(fsm, entry, inbuf, size, n_bytes_read)) {
+      next_state = entry->next_state;
 
-			next_state = entry->next_state;
+      if (entry->out_handler) {
+        entry->out_handler(state, next_state, inbuf, entry->transition_key_size,
+                           outbuf);
+      }
 
-			if (entry->out_handler) {
-				entry->out_handler(
-					state,
-					next_state,
-					inbuf,
-					entry->transition_key_size,
-					outbuf
-				);
-			}
+      return next_state;
+    }
+  }
+  FSM_ITERATE_TABLE_END(&state->transition_table, entry);
 
-			return next_state;
-		}
-
-	}FSM_ITERATE_TABLE_END(&state->transition_table, entry);
-
-	return NULL;
+  return NULL;
 }
 
 /* Public API */
@@ -139,21 +122,11 @@ state_t* __apply_transition(
  * @param out
  * @param matcher
  */
-void fsm_add_wildcard_entry(
-	state_t* from,
-	state_t* to,
-	outhandler out,
-	input_matcher matcher
-) {
-	tt_entry_t* entry = fsm_add_entry(
-		&from->transition_table,
-		0,
-		0,
-		to,
-		out
-	);
+void fsm_add_wildcard_entry(state_t* from, state_t* to, outhandler out,
+                            input_matcher matcher) {
+  tt_entry_t* entry = fsm_add_entry(&from->transition_table, 0, 0, to, out);
 
-	fsm_register_entry_comparator(entry, matcher);
+  fsm_register_entry_comparator(entry, matcher);
 }
 
 /**
@@ -164,11 +137,11 @@ void fsm_add_wildcard_entry(
  * @param matcher
  */
 void fsm_register_entry_comparator(tt_entry_t* entry, input_matcher matcher) {
-	for (unsigned int i = 0; i < MAX_ENTRY_CALLBACKS; i++) {
-		if (entry->input_matchers[i]) continue;
-		entry->input_matchers[i] = matcher;
-		return;
-	}
+  for (unsigned int i = 0; i < MAX_ENTRY_CALLBACKS; i++) {
+    if (entry->input_matchers[i]) continue;
+    entry->input_matchers[i] = matcher;
+    return;
+  }
 }
 
 /**
@@ -180,14 +153,14 @@ void fsm_register_entry_comparator(tt_entry_t* entry, input_matcher matcher) {
  * @return fsm_t*
  */
 fsm_t* fsm_init(const char* name) {
-	if (strlen(name) > MAX_FSM_NAME_SIZE) return NULL;
+  if (strlen(name) > MAX_FSM_NAME_SIZE) return NULL;
 
-	fsm_t* fsm = malloc(sizeof(fsm_t));
-	snprintf(fsm->name, sizeof(fsm->name), "%s", name);
+  fsm_t* fsm = malloc(sizeof(fsm_t));
+  snprintf(fsm->name, sizeof(fsm->name), "%s", name);
 
-	__register_input_comparator(fsm, __input_comparator);
+  __register_input_comparator(fsm, __input_comparator);
 
-	return fsm;
+  return fsm;
 }
 
 /**
@@ -200,14 +173,14 @@ fsm_t* fsm_init(const char* name) {
  * @return state_t*
  */
 state_t* fsm_state_init(const char* name, fsm_bool_t is_final) {
-	// a name is absolutely required
-	if (!name) return NULL;
+  // a name is absolutely required
+  if (!name) return NULL;
 
-	state_t* state = malloc(sizeof(state_t));
-	snprintf(state->name, sizeof(state->name), "%s", name);
-	state->is_final = is_final;
+  state_t* state = malloc(sizeof(state_t));
+  snprintf(state->name, sizeof(state->name), "%s", name);
+  state->is_final = is_final;
 
-	return state;
+  return state;
 }
 
 /**
@@ -220,10 +193,12 @@ state_t* fsm_state_init(const char* name, fsm_bool_t is_final) {
  * @return bool Indicative of whether the state was set successfully
  */
 bool fsm_set_initial_state(fsm_t* fsm, state_t* state) {
-	if (fsm->initial_state) return false;
+  if (fsm->initial_state) {
+    return false;
+  }
 
-	fsm->initial_state = state;
-	return true;
+  fsm->initial_state = state;
+  return true;
 }
 
 /**
@@ -236,97 +211,90 @@ bool fsm_set_initial_state(fsm_t* fsm, state_t* state) {
  * @return true
  * @return false
  */
-tt_entry_t* fsm_add_entry(
-	tt_t* t_table,
-	char* transition_key,
-	unsigned int sizeof_key,
-	state_t* next_state,
-	outhandler output_handler
-) {
-	if (sizeof_key > MAX_TRANSITION_KEY_SIZE) return false;
+tt_entry_t* fsm_add_entry(tt_t* t_table, char* transition_key,
+                          unsigned int sizeof_key, state_t* next_state,
+                          outhandler output_handler) {
+  if (sizeof_key > MAX_TRANSITION_KEY_SIZE) {
+    return false;
+  }
 
-	tt_entry_t* entry;
+  tt_entry_t* entry;
 
-	if (!(entry = __get_next_avail_entry(t_table))) {
-		printf("FATAL: Transition Table is full\n");
-		return NULL;
-	}
+  if (!(entry = __get_next_avail_entry(t_table))) {
+    printf("FATAL: Transition Table is full\n");
+    return NULL;
+  }
 
-	// TODO replace w/ snprintf or strlcpy
-	memcpy(entry->transition_key, transition_key, sizeof_key);
-	entry->transition_key[sizeof_key] = '\0';
-	entry->transition_key_size = sizeof_key;
-	entry->next_state = next_state;
-	entry->out_handler = output_handler;
+  // TODO replace w/ snprintf or strlcpy
+  memcpy(entry->transition_key, transition_key, sizeof_key);
+  entry->transition_key[sizeof_key] = '\0';
+  entry->transition_key_size = sizeof_key;
+  entry->next_state = next_state;
+  entry->out_handler = output_handler;
 
-	return entry;
+  return entry;
 }
 
-fsm_error_t fsm_invoke(
-	fsm_t* fsm, char*
-	inbuf,
-	unsigned int size,
-	fsm_outbuf_t* outbuf,
-	fsm_bool_t* fsm_result
-) {
-	state_t* current_state;
+fsm_error_t fsm_invoke(fsm_t* fsm, char* inbuf, unsigned int size,
+                       fsm_outbuf_t* outbuf, fsm_bool_t* fsm_result) {
+  state_t* current_state;
 
-	if (!(current_state = fsm->initial_state)) {
-		return FSM_E_INVALID_INPUTS;
-	}
+  if (!(current_state = fsm->initial_state)) {
+    return FSM_E_INVALID_INPUTS;
+  }
 
-	state_t* next_state = NULL;
+  state_t* next_state = NULL;
 
-	fsm->inbuf_cursor = 0;
-	unsigned int n_bytes_read = 0;
-	unsigned int inbuf_size = 0;
-	char* parsebuf;
+  fsm->inbuf_cursor = 0;
+  unsigned int n_bytes_read = 0;
+  unsigned int inbuf_size = 0;
+  char* parsebuf;
 
-	if (fsm_result) *fsm_result = FSM_FALSE;
+  if (fsm_result) {
+    *fsm_result = FSM_FALSE;
+  }
 
-	if (inbuf && size) {
-		parsebuf = inbuf;
-		inbuf_size = size;
-	} else {
-		parsebuf = fsm->inbuf;
-		inbuf_size = fsm->inbuf_size;
-	}
+  if (inbuf && size) {
+    parsebuf = inbuf;
+    inbuf_size = size;
+  } else {
+    parsebuf = fsm->inbuf;
+    inbuf_size = fsm->inbuf_size;
+  }
 
-	// if no outbuf supplied, utilize internal FSM outbuf
-	if (!outbuf) outbuf = &fsm->outbuf;
+  // if no outbuf supplied, utilize internal FSM outbuf
+  if (!outbuf) {
+    outbuf = &fsm->outbuf;
+  }
 
-	memset(outbuf->outbuf, 0, MAX_OUTBUF_SIZE);
-	outbuf->curr_pos = 0;
+  memset(outbuf->outbuf, 0, MAX_OUTBUF_SIZE);
+  outbuf->curr_pos = 0;
 
-	while (fsm->inbuf_cursor < MAX_INBUF_SIZE) {
-		n_bytes_read = 0;
+  while (fsm->inbuf_cursor < MAX_INBUF_SIZE) {
+    n_bytes_read = 0;
 
-		if (!(next_state = __apply_transition(
-			fsm,
-			current_state,
-			parsebuf + fsm->inbuf_cursor,
-			(inbuf_size - fsm->inbuf_cursor),
-			&n_bytes_read,
-			outbuf
-		))) return FSM_E_FAILED_TRANSITION;
+    if (!(next_state = __apply_transition(
+              fsm, current_state, parsebuf + fsm->inbuf_cursor,
+              (inbuf_size - fsm->inbuf_cursor), &n_bytes_read, outbuf))) {
+      return FSM_E_FAILED_TRANSITION;
+    }
+    if (n_bytes_read) {
+      fsm->inbuf_cursor += n_bytes_read;
+      current_state = next_state;
 
-		if (n_bytes_read) {
-			fsm->inbuf_cursor += n_bytes_read;
-			current_state = next_state;
+      if (fsm->inbuf_cursor == inbuf_size) {
+        break;
+      }
 
-			if (fsm->inbuf_cursor == inbuf_size) break;
+      continue;
+    }
 
-			continue;
-		}
+    break;
+  }
 
-		break;
-	}
+  if (fsm_result) {
+    *fsm_result = current_state->is_final;
+  }
 
-	if (fsm_result) *fsm_result = current_state->is_final;
-
-#if 0
-	if (outbuf->curr_pos < MAX_OUTBUF_SIZE) outbuf->outbuf[outbuf->curr_pos] = '\0';
-#endif
-
-	return FSM_SUCCESS;
+  return FSM_SUCCESS;
 }

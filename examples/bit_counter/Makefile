@@ -6,7 +6,7 @@ TARGET=demo
 all: $(TARGET)
 
 $(TARGET): $(OBJFILES)
-	$(CC) -I ../../src $(OBJFILES) -o $(INTERMEDIARY) -L../../ -lfsm
+	$(CC) -I ../../src $(OBJFILES) -o $(INTERMEDIARY) -L../../str -lfsm
 
 clean:
 	rm $(TARGET)
